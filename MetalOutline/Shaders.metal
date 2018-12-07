@@ -15,7 +15,7 @@ struct VertexIn {
 struct VertexOut {
     float4 position [[position]];
     float3 normal;
-    float3 eye;
+    float3 eyeNormal;
 };
 
 struct Light
@@ -57,7 +57,7 @@ vertex VertexOut lightingVertex(
 
     out.position = scn_node.modelViewProjectionTransform * float4(in.position, 1);
     out.normal = in.normal;
-    out.eye = -(scn_node.modelViewTransform * float4(in.position, 1)).xyz;
+    out.eyeNormal = (scn_node.modelViewTransform * float4(in.normal, 0)).xyz;
 
     return out;
 }
@@ -66,12 +66,8 @@ fragment float4 lightingFragment(VertexOut in [[stage_in]]) {
 
     float3 normal = normalize(in.normal);
 
-    // For edges set color to yellow
-    float3 V = normalize(in.eye - in.position.xyz);
-    float edgeDetection = (abs(dot(V, normal)) > 0.1) ? 1 : 0;
-    if ( edgeDetection != 1 ) {
-        return float4(1, 1, 0, 1);
-    }
+    // Calculate edge factor
+    float edgeFactor = normalize(in.eyeNormal).z <= 0.3;
 
     // Compute simple phong
     float3 lightDirection = normalize(light.position - in.position.xyz);
@@ -81,5 +77,5 @@ fragment float4 lightingFragment(VertexOut in [[stage_in]]) {
     // Ambient color
     float3 ambientTerm = light.ambientColor * material.ambientColor;
 
-    return float4(ambientTerm + diffuseTerm, 1.0);
+    return mix(float4(ambientTerm + diffuseTerm, 1.0), float4(1, 1, 0, 1), edgeFactor);
 }
